@@ -1,1 +1,0 @@
-# AyType-Latihan Mengetik

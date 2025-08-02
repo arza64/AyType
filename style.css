@@ -31,7 +31,7 @@ header {
   margin-left: 10px;
   padding: 10px 15px;
   border: none;
-  background-color: #A3B18A;
+  background-color: #3A5A40;
   color: white;
   border-radius: 5px;
   cursor: pointer;
@@ -39,19 +39,19 @@ header {
 
 /* ===== Tombol Utama (Home, Typing, Mode) ===== */
 .btn-home, .btn-typing, .btn-mode {
-  background-color: #3A5A40;
+  background-color: #A3B18A;
   color: white;
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: bold;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 15px rgba(5,5,5,0.6);
   transition: background-color 0.3s ease, transform 0.2s;
 }
 .btn-home:hover, .btn-typing:hover, .btn-mode:hover {
-  background-color: #3A5A40;
+  background-color: #A3B18A;
   transform: scale(1.05);
 }
 .btn-home:active, .btn-typing:active, .btn-mode:active {

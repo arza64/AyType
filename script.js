@@ -334,16 +334,14 @@ input.addEventListener("input", () => {
   }
 });
 
-//----- result----
+// ----- Selesai Tes -----
 function endTest() {
+  // Sembunyikan elemen input dan keyboard
   inputBar.classList.add("hidden");
   wordBar.classList.add("hidden");
   keyboard.classList.add("hidden");
 
-  const totalTyped = correctCharCount + incorrectCharCount;
-  const accuracy = totalTyped > 0 ? (correctCharCount / totalTyped) * 100 : 0;
-  const wpm = correctCount;
-
+  // Tanggal & Hari
   const today = new Date();
   const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
   const formattedDate = today.toLocaleDateString("id-ID", options);
@@ -351,7 +349,39 @@ function endTest() {
   document.getElementById("dayName").textContent = dayName;
   document.getElementById("fullDate").textContent = dateParts.join(", ");
 
-  document.querySelector(".wpm").textContent = `${wpm} WPM`;
+  // Kalkulasi Akurasi
+  const accuracy = correctCharCount / (correctCharCount + incorrectCharCount) * 100 || 0;
+
+  // Kalkulasi WPM Final (gabungan dari Raw, Net, dan Kata)
+  function calculateFinalWPM(correctCharCount, incorrectCharCount, correctCount, durationSeconds) {
+    const totalTyped = correctCharCount + incorrectCharCount;
+    const minutes = durationSeconds / 60;
+
+    const wpmRaw = totalTyped / 5 / minutes;
+    const wpmNet = correctCharCount / 5 / minutes;
+    const wpmKata = correctCount / minutes;
+
+    const wpmFinal = (wpmRaw * 0.3) + (wpmNet * 0.5) + (wpmKata * 0.2);
+
+    return {
+      wpmRaw,
+      wpmNet,
+      wpmKata,
+      wpmFinal,
+      totalTyped
+    };
+  }
+
+  const { wpmFinal, wpmNet, wpmRaw, wpmKata, totalTyped } = calculateFinalWPM(
+    correctCharCount,
+    incorrectCharCount,
+    correctCount,
+    60
+  );
+
+  // Tampilkan ke layar
+  document.querySelector(".wpm").textContent = `${Math.round(wpmFinal)} WPM`;
+
   document.querySelector(".result-section").innerHTML = `
     <p>Total Benar     : ${correctCount} kata</p>
     <p>Total Salah     : ${incorrectCount} kata</p>
@@ -360,17 +390,20 @@ function endTest() {
     <p class="indent">Hijau : ${correctCharCount}</p>
     <p class="indent">Merah : ${incorrectCharCount}</p>
     <p>Waktu           : 60 Detik</p>
-    <p>Title           : <span id="title">${getTitle(wpm)}</span></p>
+    <p>Title           : <span id="title">${getTitle(wpmFinal)}</span></p>
   `;
+
+  // Tampilkan struk hasil
   resultStruk.classList.remove("hidden");
 }
 
-function getTitle(wpm) {
-  if (wpm <= 20) return "Baby's Fingers";
-  if (wpm <= 40) return "Beginner";
-  if (wpm <= 60) return "Competent";
-  if (wpm <= 80) return "Pro Typer";
-  if (wpm <= 100) return "Expert";
+// ----- Klasifikasi Title -----
+function getTitle(wpmFinal) {
+  if (wpmFinal <= 20) return "Baby's Fingers";
+  if (wpmFinal <= 40) return "Beginner";
+  if (wpmFinal <= 60) return "Competent";
+  if (wpmFinal <= 80) return "Pro Typer";
+  if (wpmFinal <= 100) return "Expert";
   return "The God";
 }
 

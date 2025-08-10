@@ -19,7 +19,8 @@ const modeSection = document.getElementById("modeSection");
 
 // --- Data & State ---
 let words = [];
-let maxActiveWords = 20;
+let wordsPerLine = 0;
+let maxActiveWords = 0;
 let activeWords = [];
 let startActiveIndex = 0;
 let currentWordGlobalIndex = 0;
@@ -32,6 +33,7 @@ let incorrectCharCount = 0;
 let timeLeft = 60;
 let timerInterval = null;
 let timerStarted = false;
+
 
 // --- Word List ---
 const wordList = [
@@ -117,64 +119,46 @@ function showSection(sectionId) {
   localStorage.setItem("lastSection", sectionId);
 }
 
-function startTest() {
-  resetTest();
-  generateWords();
-  updateActiveWords();
-  highlightCurrentWord();
-}
-// Jalankan timer baru
-  timerStarted = true;
-  timerDisplay.textContent = timeLeft;
+// --- Fungsi untuk menampilkan section halaman ---
+function showSection(sectionId) {
+  homeSection.classList.add("hidden");
+  typingSection.classList.add("hidden");
+  modeSection.classList.add("hidden");
 
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    timerDisplay.textContent = timeLeft;
+  document.getElementById(sectionId).classList.remove("hidden");
 
-    if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      timerStarted = false;
-      endTest(); // <-- PENTING: panggil saat waktu habis
-    }
-  }, 1000);
-
-function resetTest() {
-  words = [...wordList];
-  shuffle(words);
-  activeWords = [];
-  startActiveIndex = 0;
-  currentWordGlobalIndex = 0;
-  correctCount = 0;
-  incorrectCount = 0;
-  correctCharCount = 0;
-  incorrectCharCount = 0;
-  timeLeft = 60;
-  timerStarted = false;
-  clearInterval(timerInterval);
-
-  input.value = "";
-  timerDisplay.textContent = "60";
-  resultStruk.classList.add("hidden");
-  inputBar.classList.remove("hidden");
-  wordBar.classList.remove("hidden");
-  keyboard.classList.remove("hidden");
+  localStorage.setItem("lastSection", sectionId);
 }
 
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
+// --- Fungsi hitung kata per baris berdasarkan posisi offsetTop di DOM ---
+function calculateWordsPerLineByDom() {
+  const wordSpans = wordBar.querySelectorAll('.word');
+  if (wordSpans.length === 0) return 0;
+
+  let firstLineTop = wordSpans[0].offsetTop;
+  let count = 0;
+
+  for (let span of wordSpans) {
+    if (span.offsetTop !== firstLineTop) break;  // baris baru sudah mulai
+    count++;
   }
+  return count;
 }
 
-function generateWords() {
-  // Already shuffled
-}
-
+// --- Update kata aktif di DOM ---
 function updateActiveWords() {
   wordBar.innerHTML = "";
-  activeWords = words.slice(startActiveIndex, startActiveIndex + maxActiveWords);
 
+  // Tentukan jumlah baris tampil, 3 baris kalau lebar >= 1200px, selain itu 2 baris
+  const numberOfLines = window.innerWidth >= 1200 ? 3 : 3;
+
+  // Render sementara dengan jumlah kata maxActiveWords atau perkiraan default supaya bisa hitung wordsPerLine
+  const tentativeWordsCount = maxActiveWords || 20;
+
+  // Ambil slice kata yang akan ditampilkan sementara
+  activeWords = words.slice(startActiveIndex, startActiveIndex + tentativeWordsCount);
+
+  // Render kata-kata ke DOM
   activeWords.forEach((word, index) => {
     const wordSpan = document.createElement("span");
     wordSpan.className = "word";
@@ -190,82 +174,201 @@ function updateActiveWords() {
     wordBar.appendChild(wordSpan);
     wordBar.appendChild(document.createTextNode(" "));
   });
+
+  // Hitung berapa kata per baris sebenarnya berdasarkan posisi offsetTop
+  wordsPerLine = calculateWordsPerLineByDom();
+  if (wordsPerLine === 0) wordsPerLine = 8; // fallback
+
+  // Hitung maksimal kata aktif yang harus ditampilkan berdasarkan baris dan kata per baris
+  maxActiveWords = wordsPerLine * numberOfLines;
+
+  // Jika jumlah kata yang ditampilkan kurang dari maxActiveWords, render ulang agar pas
+  if (activeWords.length !== maxActiveWords) {
+    activeWords = words.slice(startActiveIndex, startActiveIndex + maxActiveWords);
+
+    wordBar.innerHTML = "";
+
+    activeWords.forEach((word, index) => {
+      const wordSpan = document.createElement("span");
+      wordSpan.className = "word";
+      wordSpan.setAttribute("data-index", index);
+
+      word.split("").forEach((char) => {
+        const charSpan = document.createElement("span");
+        charSpan.className = "char";
+        charSpan.textContent = char;
+        wordSpan.appendChild(charSpan);
+      });
+
+      wordBar.appendChild(wordSpan);
+      wordBar.appendChild(document.createTextNode(" "));
+    });
+  }
+
+  // Atur tinggi wordBar supaya sesuai jumlah baris
+  wordBar.style.height = `calc(1.5em * ${numberOfLines})`;
+
+  console.log('wordsPerLine:', wordsPerLine, 'numberOfLines:', numberOfLines, 'maxActiveWords:', maxActiveWords);
 }
 
+// --- Reset dan mulai test ---
+function resetTest() {
+  words = [...wordList];
+  shuffle(words);
+  activeWords = [];
+  startActiveIndex = 0;
+  currentWordGlobalIndex = 0;
+
+  correctCount = 0;
+  incorrectCount = 0;
+  correctCharCount = 0;
+  incorrectCharCount = 0;
+
+  timeLeft = 60;
+  timerStarted = false;
+  clearInterval(timerInterval);
+
+  input.value = "";
+  timerDisplay.textContent = "60";
+
+  resultStruk.classList.add("hidden");
+  inputBar.classList.remove("hidden");
+  wordBar.classList.remove("hidden");
+  keyboard.classList.remove("hidden");
+}
+
+function startTest() {
+  resetTest();
+
+  // Tampilkan kata awal dulu supaya bisa hitung wordsPerLine dengan benar
+  maxActiveWords = 16; // default sementara
+  updateActiveWords();
+  timerDisplay.textContent = timeLeft;
+}
+
+// --- Shuffle array Fisher-Yates ---
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+// --- Highlight kata aktif ---
 function highlightCurrentWord() {
-  // Hapus semua underline sebelumnya
-  document.querySelectorAll(".underline-active").forEach(el =>
-    el.classList.remove("underline-active")
-  );
+  document.querySelectorAll('.word').forEach(w => w.classList.remove('active-word'));
 
   const relativeIndex = currentWordGlobalIndex - startActiveIndex;
-  const wordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
-  if (!wordSpan) return;
+  const currentWordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
+  if (currentWordSpan) {
+    currentWordSpan.classList.add('active-word');
 
-  const chars = wordSpan.querySelectorAll(".char");
-  let nextIndex = input.value.length;
-
-  // Jangan biarkan index melebihi jumlah karakter
-  if (nextIndex >= chars.length) {
-    nextIndex = chars.length - 1;
-  }
-
-  // Tambahkan underline ke huruf saat ini
-  if (chars[nextIndex]) {
-    chars[nextIndex].classList.add("underline-active");
+    // Scroll kata aktif ke tampilan jika perlu (smooth)
+    currentWordSpan.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }
 }
-input.addEventListener("input", () => {
-  highlightCurrentWord();
-  // ... mungkin ada logika lain di sini
-});
 
-// --- Event: Input Keydown ---
-input.addEventListener("keydown", (e) => {
-  if (!timerStarted) {
-    timerStarted = true;
-    timerInterval = setInterval(() => {
-      timeLeft--;
-      timerDisplay.textContent = timeLeft;
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        endTest();
-      }
-    }, 1000);
+
+
+// --- Fungsi start timer ---
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerDisplay.textContent = timeLeft;
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerStarted = false;
+      endTest();
+    }
+  }, 1000);
+}
+// --- Event input untuk highlight huruf dan start timer ---
+input.addEventListener("input", () => {
+  if (!timerStarted && input.value.length > 0) {
+    startTimer();
   }
 
+  const typed = input.value;
+  const currentWord = words[currentWordGlobalIndex];
+  const relativeIndex = currentWordGlobalIndex - startActiveIndex;
+  const currentWordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
+
+  if (!currentWordSpan) return;
+
+  const charSpans = currentWordSpan.querySelectorAll(".char");
+
+  charSpans.forEach(charSpan => {
+    charSpan.classList.remove("correct-char", "incorrect-char", "underline-active");
+  });
+
+  if (typed.length > currentWord.length) {
+    charSpans.forEach(charSpan => charSpan.classList.add("incorrect-char"));
+  } else {
+    for (let i = 0; i < typed.length; i++) {
+      if (typed[i] === currentWord[i]) {
+        charSpans[i].classList.add("correct-char");
+      } else {
+        charSpans[i].classList.add("incorrect-char");
+      }
+    }
+  }
+
+  if (typed.length < charSpans.length) {
+    charSpans[typed.length].classList.add("underline-active");
+  } else if (typed.length === charSpans.length) {
+    charSpans[charSpans.length - 1].classList.add("underline-active");
+  }
+});
+
+// --- Event keydown untuk spasi (mengakhiri kata) ---
+input.addEventListener("keydown", (e) => {
   if (e.key === " ") {
     e.preventDefault();
 
     const typed = input.value.trim();
+    if (typed === "") return;
+
     const currentWord = words[currentWordGlobalIndex];
     const relativeIndex = currentWordGlobalIndex - startActiveIndex;
     const currentWordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
+    if (!currentWordSpan) return;
 
-    // --- Cek kata benar atau tidak
+    // Cek benar atau salah
     if (typed === currentWord) {
       for (let i = 0; i < currentWord.length; i++) {
         currentWordSpan.children[i].classList.add("correct-char");
+        currentWordSpan.children[i].classList.remove("incorrect-char");
       }
       currentWordSpan.classList.add("correct-word");
+      currentWordSpan.classList.remove("incorrect-word");
       correctCount++;
       correctCharCount += currentWord.length;
     } else {
       for (let i = 0; i < currentWord.length; i++) {
         currentWordSpan.children[i].classList.add("incorrect-char");
+        currentWordSpan.children[i].classList.remove("correct-char");
       }
       currentWordSpan.classList.add("incorrect-word");
+      currentWordSpan.classList.remove("correct-word");
       incorrectCount++;
       incorrectCharCount += currentWord.length;
     }
 
+    // Hapus underline aktif
     currentWordSpan.querySelectorAll(".char").forEach(char => char.classList.remove("underline-active"));
 
     input.value = "";
     currentWordGlobalIndex++;
 
-    if (currentWordGlobalIndex === startActiveIndex + maxActiveWords) {
-      startActiveIndex += maxActiveWords;
+    // Geser kata aktif jika sudah melewati wordsPerLine
+    const relativePos = currentWordGlobalIndex - startActiveIndex;
+
+    if (relativePos >= wordsPerLine) {
+      startActiveIndex += wordsPerLine;
       updateActiveWords();
     }
 
@@ -273,66 +376,33 @@ input.addEventListener("keydown", (e) => {
   }
 });
 
-//input---
-input.addEventListener("input", () => {
-  const typed = input.value;
-  const currentWord = words[currentWordGlobalIndex];
-  const relativeIndex = currentWordGlobalIndex - startActiveIndex;
-  const currentWordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
-  if (!currentWordSpan) return;
+// --- Event resize window ---
+// Perbarui wordsPerLine dan maxActiveWords jika ukuran berubah
+window.addEventListener("resize", () => {
+  // Jika test sudah mulai, perbarui
+  if (!timerStarted) return;
 
-  const charSpans = currentWordSpan.querySelectorAll(".char");
-
-  charSpans.forEach((charSpan, i) => {
-    charSpan.classList.remove("correct-char", "incorrect-char", "underline-active");
-    if (i < typed.length) {
-      if (typed[i] === currentWord[i]) {
-        charSpan.classList.add("correct-char");
-      } else {
-        charSpan.classList.add("incorrect-char");
-      }
-    }
-  });
-
-  
-
-  input.addEventListener("input", () => {
-  const typed = input.value;
-  const currentWord = words[currentWordGlobalIndex];
-  const relativeIndex = currentWordGlobalIndex - startActiveIndex;
-  const currentWordSpan = document.querySelector(`.word[data-index="${relativeIndex}"]`);
-
-  // Reset warna dulu
-  currentWordSpan.querySelectorAll(".char").forEach(char => {
-    char.classList.remove("correct-char", "incorrect-char");
-  });
-
-  // Kalau huruf yang diketik kelebihan → semua merah
-  if (typed.length > currentWord.length) {
-    currentWordSpan.querySelectorAll(".char").forEach((charSpan) => {
-      charSpan.classList.add("incorrect-char");
-    });
-    return;
-  }
-
-  // Kalau belum kelebihan, cek satu per satu
-  for (let i = 0; i < typed.length; i++) {
-    const expected = currentWord[i];
-    const actual = typed[i];
-    const charSpan = currentWordSpan.children[i];
-
-    if (expected === actual) {
-      charSpan.classList.add("correct-char");
-    } else {
-      charSpan.classList.add("incorrect-char");
-    }
-  }
+  // Tunggu sejenak agar DOM stabil, gunakan setTimeout
+  setTimeout(() => {
+    // Jangan reset kata aktif, cuma hitung ulang
+    wordsPerLine = calculateWordsPerLineByDom();
+    if (wordsPerLine === 0) wordsPerLine = 8;
+    maxActiveWords = wordsPerLine * 2;
+    updateActiveWords();
+    highlightCurrentWord();
+  }, 100);
 });
 
-  if (typed.length < charSpans.length) {
-    charSpans[typed.length].classList.add("underline-active");
-  }
-});
+// --- Fungsi akhir tes ---
+function endTest() {
+    alert(`Waktu habis! Kamu mengetik ${correctCount} kata dengan akurasi ${(correctCharCount / (correctCharCount + incorrectCharCount) * 100).toFixed(2)}%`);
+  // Bisa kamu ganti dengan tampilkan hasil yang lebih baik
+}
+
+// --- Mulai awal ---
+startTest();
+highlightCurrentWord();
+
 
 // ----- Selesai Tes -----
 function endTest() {

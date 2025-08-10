@@ -76,22 +76,60 @@ main {
 }
 
 .word-bar {
-  font-size: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 24px;
   font-weight: bold;
-  margin: 20px 1;
-  padding: 20px;
+  font-family: monospace, 'Courier New', Courier, monospace;
+  width: 100%;          /* fleksibel lebar */
+  max-width: 640px;     /* batas maksimal lebar */
+  margin: 10px auto;
+  padding: rem;
   background-color: #f9f9f9;
   border: 2px solid #a3b18a;
   border-radius: 10px;
-  min-height: 80px;
+  min-height: calc(1.5em * 3 + 1rem); /* tinggi minimal untuk 2 baris + padding */
+  max-height: calc(1.5em * 3 + 1rem); /* maksimal 3 baris + padding */
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: max-height 0.3s ease;
+}
+
+@media (min-width: 1200px) {
+  /* Lebar layar besar -> izinkan 3 baris dengan max-height lebih tinggi */
+  .word-bar {
+    max-height: calc(1.5em * 3 + 1rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .word-bar {
+    max-width: 300px; /* responsif untuk layar kecil */
+    font-size: 18px;  /* sedikit lebih kecil biar muat */
+  }
+}
+
+.word {
+  white-space: nowrap;
+  display: inline-block;
+  margin-right: 1px;  /* jarak antar kata */
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: default;
   user-select: none;
-  line-height: 2rem;
-  word-wrap: break-word;
-  padding: 1rem;
+  transition: background-color 0.3s ease;
 }
 
 .word.active-word {
   background-color: #DAD7CD;
+  color: #3a3a3a;
+  box-shadow: 0 0 6px 2px rgba(163, 177, 138, 0.6);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* ===== Input dan Timer Wrapper ===== */
@@ -316,11 +354,10 @@ main {
 }
 
 .typing-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  margin-top: 20px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .key {
